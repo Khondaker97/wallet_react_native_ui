@@ -11,6 +11,7 @@ import {NavigationContainer, DefaultTheme} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
 import {SignUp} from './screens';
+import Tabs from './navigation/tabs';
 
 const theme = {
   ...DefaultTheme,
@@ -32,6 +33,8 @@ const App = () => {
           component={SignUp}
           // options={{headerShown: false}}
         />
+        {/* tabs  */}
+        <Stack.Screen name="Tabs" component={Tabs} />
       </Stack.Navigator>
     </NavigationContainer>
   );

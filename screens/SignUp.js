@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 
 import {
   View,
@@ -17,9 +17,51 @@ import {
 } from 'react-native';
 
 import LinearGradient from 'react-native-linear-gradient';
-import {icons, images, theme, COLORS, SIZES, FONTS} from '../constants';
+import {icons, images, COLORS, SIZES, FONTS} from '../constants';
 
-const SignUp = () => {
+const SignUp = ({navigation}) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [area, setArea] = useState([]);
+  const [selectedArea, setSelectedArea] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('https://restcountries.com/v3.1/all')
+      .then(res => res.json())
+      .then(data => {
+        if (mounted) {
+          let areaData = data.map(item => {
+            const root = item.idd?.root;
+            const suffixes = item.idd?.suffixes;
+            const code = suffixes === undefined ? '' : `${root}${suffixes[0]}`;
+            // ${suffixes[0]}
+            return {
+              name: item.name.common,
+              short: item.cca2,
+              flag: item.flags.png,
+              code: code,
+            };
+          });
+          const sortedByName = areaData.sort((a, b) =>
+            a.name.localeCompare(b.name),
+          );
+          setArea(sortedByName);
+
+          if (areaData.length > 0) {
+            let defaultData = areaData.filter(a => a.short === 'BD');
+            if (defaultData.length > 0) {
+              setSelectedArea(defaultData[0]);
+            }
+          }
+        }
+      })
+      .catch(err => console.log(err));
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
   const renderHeader = () => {
     return (
       <TouchableOpacity
@@ -63,19 +105,21 @@ const SignUp = () => {
           <View style={{flexDirection: 'row'}}>
             <TouchableOpacity
               style={styles.phoneContainer}
-              onPress={() => console.log('show modal')}>
+              onPress={() => setModalVisible(prev => !prev)}>
               <View style={{justifyContent: 'center'}}>
                 <Image source={icons.down} style={styles.downIcon} />
               </View>
               <View style={{justifyContent: 'center', marginLeft: 5}}>
                 <Image
-                  source={images.usFlag}
+                  source={{uri: selectedArea?.flag}}
                   resizeMode="contain"
                   style={styles.countryIcon}
                 />
               </View>
               <View style={{justifyContent: 'center', marginLeft: 5}}>
-                <Text style={{color: COLORS.white, ...FONTS.body3}}>US+01</Text>
+                <Text style={{color: COLORS.white, ...FONTS.body3}}>
+                  {selectedArea?.code}
+                </Text>
               </View>
             </TouchableOpacity>
             {/* phone number  */}
@@ -97,13 +141,13 @@ const SignUp = () => {
             placeholder="Enter Password"
             placeholderTextColor={COLORS.white}
             selectionColor={COLORS.white}
-            secureTextEntry={true}
+            secureTextEntry={!showPassword}
           />
           <TouchableOpacity
             style={styles.showIcon}
-            onPress={() => console.log('toggle')}>
+            onPress={() => setShowPassword(prev => !prev)}>
             <Image
-              source={icons.eye}
+              source={showPassword ? icons.disable_eye : icons.eye}
               style={{height: 20, width: 20, tintColor: COLORS.white}}
             />
           </TouchableOpacity>
@@ -116,10 +160,59 @@ const SignUp = () => {
       <View style={{margin: SIZES.padding * 3}}>
         <TouchableOpacity
           style={styles.continue}
-          onPress={() => console.log('Navigate to Home ')}>
+          onPress={() => navigation.navigate('Tabs')}>
           <Text style={{color: COLORS.white, ...FONTS.h3}}>Continue</Text>
         </TouchableOpacity>
       </View>
+    );
+  };
+
+  const renderAreaModal = () => {
+    const renderItem = ({item}) => {
+      return (
+        <TouchableOpacity
+          style={{
+            padding: SIZES.padding,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+          onPress={() => {
+            setSelectedArea(item);
+            setModalVisible(prev => !prev);
+          }}>
+          <Image
+            source={{uri: item.flag}}
+            style={{
+              width: 30,
+              height: 30,
+              marginRight: 10,
+            }}
+          />
+          <Text style={{...FONTS.body2, color: COLORS.black}}>{item.name}</Text>
+        </TouchableOpacity>
+      );
+    };
+    return (
+      <Modal animationType="slide" transparent={true} visible={modalVisible}>
+        <TouchableWithoutFeedback
+          onPress={() => setModalVisible(prev => !prev)}>
+          <View
+            style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
+            <View style={styles.modalContainer}>
+              <FlatList
+                data={area}
+                renderItem={renderItem}
+                keyExtractor={item => item.short}
+                showsVerticalScrollIndicator={false}
+                style={{
+                  padding: SIZES.padding * 2,
+                  marginBottom: SIZES.padding * 2,
+                }}
+              />
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     );
   };
   return (
@@ -136,6 +229,7 @@ const SignUp = () => {
           {renderButton()}
         </ScrollView>
       </LinearGradient>
+      {renderAreaModal()}
       <StatusBar />
     </KeyboardAvoidingView>
   );
@@ -222,6 +316,12 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius / 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modalContainer: {
+    height: 400,
+    width: SIZES.width * 0.8,
+    backgroundColor: COLORS.lightGreen,
+    borderRadius: SIZES.radius,
   },
 });
 export default SignUp;
